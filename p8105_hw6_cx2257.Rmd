@@ -1,0 +1,16 @@
+---
+title: "p8105_hw6_cx2257"
+author: "Congyang Xie"
+date: "12/1/2021"
+output: github_document
+---
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readr)
+```
+
+```{r}
+birthweight_df <- read_csv("https://www.p8105.com/data/birthweight.csv")
+```
+
