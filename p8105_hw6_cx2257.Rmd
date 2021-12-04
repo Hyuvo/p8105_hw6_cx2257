@@ -12,5 +12,45 @@ library(readr)
 
 ```{r}
 birthweight_df <- read_csv("https://www.p8105.com/data/birthweight.csv")
+skimr::skim(birthweight_df)
+```
+
+```{r}
+birthweight_df <-
+  birthweight_df %>% 
+  mutate(
+    mrace = fct_infreq(as.factor(mrace)),
+    frace = fct_infreq(as.factor(frace)),
+    malform = fct_infreq(as.factor(malform)),
+    mrace = fct_infreq(as.factor(mrace))
+  )
+```
+
+
+```{r}
+multi_fit = lm(bwt ~ ., data = birthweight_df)
+
+multi_fit %>% 
+  broom::tidy()
+
+step(multi_fit, direction = 'backward')
+
+fit = lm(
+  bwt ~ babysex + bhead + blength + delwt + fincome + frace + gaweeks +
+    malform + menarche + mheight + momage + mrace + parity +
+    pnumlbw + pnumsga + ppbmi + ppwt + smoken,
+  data = birthweight_df
+)
+
+fit %>% 
+  broom::tidy()
+
+birthweight_df %>% 
+  modelr::add_residuals(fit) %>% 
+  modelr::add_predictions(fit) %>% 
+  ggplot(aes(x = pred, y = resid)) + 
+  geom_point(alpha = 0.6, color = "pink") +
+  theme_light()
+  
 ```
 
