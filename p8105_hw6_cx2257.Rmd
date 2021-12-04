@@ -8,6 +8,8 @@ output: github_document
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(readr)
+library(modelr)
+library(mgcv)
 ```
 
 ```{r}
@@ -35,22 +37,55 @@ multi_fit %>%
 
 step(multi_fit, direction = 'backward')
 
-fit = lm(
-  bwt ~ babysex + bhead + blength + delwt + fincome + frace + gaweeks +
-    malform + menarche + mheight + momage + mrace + parity +
-    pnumlbw + pnumsga + ppbmi + ppwt + smoken,
-  data = birthweight_df
-)
+fit = lm(formula = bwt ~ babysex + bhead + blength + delwt + fincome + 
+    gaweeks + mheight + mrace + parity + ppwt + smoken, data = birthweight_df)
 
 fit %>% 
   broom::tidy()
 
 birthweight_df %>% 
-  modelr::add_residuals(fit) %>% 
-  modelr::add_predictions(fit) %>% 
+  add_residuals(fit) %>% 
+  add_predictions(fit) %>% 
   ggplot(aes(x = pred, y = resid)) + 
   geom_point(alpha = 0.6, color = "pink") +
   theme_light()
   
+```
+
+```{r}
+cv_df = 
+  crossv_mc(birthweight_df, 100) 
+
+cv_df =
+  cv_df %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble))
+
+cv_df = 
+  cv_df %>% 
+  mutate(
+    linear_mod  = map(train, ~lm(formula = bwt ~ babysex + bhead + blength + delwt + fincome + 
+    gaweeks + mheight + mrace + parity + ppwt + smoken, data = .x)),
+    main_mod  = map(train, ~ lm(bwt ~ blength + gaweeks, data = .x)),
+    side_mod  = map(train, ~ lm(bwt ~ bhead + blength + babysex, data = .x))) %>% 
+  mutate(
+    rmse_linear = map2_dbl(linear_mod, test, ~rmse(model = .x, data = .y)),
+    rmse_smooth = map2_dbl(main_mod, test, ~rmse(model = .x, data = .y)),
+    rmse_wiggly = map2_dbl(side_mod, test, ~rmse(model = .x, data = .y)))
+```
+
+```{r}
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + 
+  geom_violin() +
+  theme_light()
 ```
 
